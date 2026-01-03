@@ -15,7 +15,7 @@ th { background:#000; color:#fff }
 .yellow { background:#fff3b0 }
 .status-good { color:green; font-weight:bold }
 .status-bad { color:red; font-weight:bold }
-td.left { text-align:left }
+.left { text-align:left }
 </style>
 </head>
 
@@ -49,20 +49,30 @@ td.left { text-align:left }
 
 <script>
 function parseLine(line) {
-  // Divide por espacios múltiples
   const parts = line.trim().split(/\s+/);
-
   if (parts.length < 8) return null;
 
+  // 🔑 LOS ÚLTIMOS 3 SIEMPRE SON NUMÉRICOS
+  const total = parseFloat(parts.pop());
+  const debit = parseFloat(parts.pop());
+  const credit = parseFloat(parts.pop());
+
+  const doc = parts.shift();
+  const date = parts.shift() + " " + parts.shift();
+  const type = parts.shift();
+
+  const enteredBy = parts.pop();
+  const description = parts.join(" ");
+
   return {
-    doc: parts[0],
-    date: parts[1] + " " + parts[2],
-    type: parts[3],
-    desc: parts[4],
-    entered: parts[5],
-    credit: parseFloat(parts[6]) || 0,
-    debit: parseFloat(parts[7]) || 0,
-    total: parseFloat(parts[8]) || 0
+    doc,
+    date,
+    type,
+    description,
+    enteredBy,
+    credit: credit || 0,
+    debit: debit || 0,
+    total: total || 0
   };
 }
 
@@ -78,7 +88,7 @@ function analyze() {
     if (r) rows.push(r);
   }
 
-  // Ordenar de más viejo a más nuevo
+  // Orden cronológico
   rows.reverse();
 
   let debt = 0;
@@ -96,28 +106,25 @@ function analyze() {
     }
 
     // DEPOSIT
-    if (r.credit > 0) {
-      if (debt > 0) {
-        if (r.credit >= debt) {
-          surplus = (r.credit - debt).toFixed(2);
-          debt = 0;
-          cls = "yellow";
-        } else {
-          debt -= r.credit;
-          cls = "red";
-        }
+    if (r.credit > 0 && debt > 0) {
+      if (r.credit >= debt) {
+        surplus = (r.credit - debt).toFixed(2);
+        debt = 0;
+        cls = "yellow";
+      } else {
+        debt -= r.credit;
+        cls = "red";
       }
     }
 
     const tr = document.createElement("tr");
     tr.className = cls;
-
     tr.innerHTML = `
       <td>${r.doc}</td>
       <td>${r.date}</td>
       <td>${r.type}</td>
-      <td class="left">${r.desc}</td>
-      <td>${r.entered}</td>
+      <td class="left">${r.description}</td>
+      <td>${r.enteredBy}</td>
       <td>${r.credit.toFixed(2)}</td>
       <td>${r.debit.toFixed(2)}</td>
       <td>${r.total.toFixed(2)}</td>
