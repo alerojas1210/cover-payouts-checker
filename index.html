@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -15,7 +16,7 @@ th { background:#000; color:#fff }
 .yellow { background:#fff3b0 }
 .status-good { color:green; font-weight:bold }
 .status-bad { color:red; font-weight:bold }
-.left { text-align:left }
+td.left { text-align:left }
 </style>
 </head>
 
@@ -49,23 +50,20 @@ th { background:#000; color:#fff }
 
 <script>
 function parseLine(line) {
+  // Divide por espacios múltiples
   const parts = line.trim().split(/\s+/);
+
   if (parts.length < 8) return null;
 
-  const total = parseFloat(parts.pop()) || 0;
-  const debit = parseFloat(parts.pop()) || 0;
-  const credit = parseFloat(parts.pop()) || 0;
-
-  const doc = parts.shift();
-  const dateStr = parts.shift() + " " + parts.shift();
-  const type = parts.shift();
-
-  const enteredBy = parts.pop();
-  const description = parts.join(" ");
-
   return {
-    doc, dateStr, type, description, enteredBy,
-    credit, debit, total
+    doc: parts[0],
+    date: parts[1] + " " + parts[2],
+    type: parts[3],
+    desc: parts[4],
+    entered: parts[5],
+    credit: parseFloat(parts[6]) || 0,
+    debit: parseFloat(parts[7]) || 0,
+    total: parseFloat(parts[8]) || 0
   };
 }
 
@@ -74,50 +72,53 @@ function analyze() {
   if (!text) return;
 
   const lines = text.split("\n");
+  const rows = [];
+
+  for (let l of lines) {
+    const r = parseLine(l);
+    if (r) rows.push(r);
+  }
+
+  // Ordenar de más viejo a más nuevo
+  rows.reverse();
+
+  let debt = 0;
   const tbody = document.querySelector("#resultTable tbody");
   tbody.innerHTML = "";
 
-  let debt = 0;
-
-  lines.forEach(line => {
-    const r = parseLine(line);
-    if (!r) return;
-
-    let surplus = "";
-    let coveredHere = false;
-
-    // 🔴 PAYOUT → SIEMPRE ACUMULA SI HAY DEUDA
-    if (r.debit < 0) {
-      debt += Math.abs(r.debit);
-    }
-
-    // 🟢 DEPOSIT → cubre deuda existente
-    if (r.credit > 0 && debt > 0) {
-      if (r.credit >= debt) {
-        surplus = (r.credit - debt).toFixed(2);
-        debt = 0;
-        coveredHere = true;
-      } else {
-        debt -= r.credit;
-      }
-    }
-
-    // 🎨 COLOR FINAL SEGÚN DEUDA REAL
+  rows.forEach(r => {
     let cls = "green";
-    if (coveredHere) {
-      cls = "yellow";
-    } else if (debt > 0) {
+    let surplus = "";
+
+    // PAYOUT
+    if (r.debit > 0) {
+      debt += r.debit;
       cls = "red";
+    }
+
+    // DEPOSIT
+    if (r.credit > 0) {
+      if (debt > 0) {
+        if (r.credit >= debt) {
+          surplus = (r.credit - debt).toFixed(2);
+          debt = 0;
+          cls = "yellow";
+        } else {
+          debt -= r.credit;
+          cls = "red";
+        }
+      }
     }
 
     const tr = document.createElement("tr");
     tr.className = cls;
+
     tr.innerHTML = `
       <td>${r.doc}</td>
-      <td>${r.dateStr}</td>
+      <td>${r.date}</td>
       <td>${r.type}</td>
-      <td class="left">${r.description}</td>
-      <td>${r.enteredBy}</td>
+      <td class="left">${r.desc}</td>
+      <td>${r.entered}</td>
       <td>${r.credit.toFixed(2)}</td>
       <td>${r.debit.toFixed(2)}</td>
       <td>${r.total.toFixed(2)}</td>
