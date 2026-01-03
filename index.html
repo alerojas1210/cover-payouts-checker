@@ -52,7 +52,6 @@ function parseLine(line) {
   const parts = line.trim().split(/\s+/);
   if (parts.length < 8) return null;
 
-  // 🔑 LOS ÚLTIMOS 3 SIEMPRE SON NUMÉRICOS
   const total = parseFloat(parts.pop());
   const debit = parseFloat(parts.pop());
   const credit = parseFloat(parts.pop());
@@ -65,11 +64,7 @@ function parseLine(line) {
   const description = parts.join(" ");
 
   return {
-    doc,
-    date,
-    type,
-    description,
-    enteredBy,
+    doc, date, type, description, enteredBy,
     credit: credit || 0,
     debit: debit || 0,
     total: total || 0
@@ -88,21 +83,19 @@ function analyze() {
     if (r) rows.push(r);
   }
 
-  // Orden cronológico
-  rows.reverse();
+  rows.reverse(); // cronológico
 
   let debt = 0;
   const tbody = document.querySelector("#resultTable tbody");
   tbody.innerHTML = "";
 
   rows.forEach(r => {
-    let cls = "green";
     let surplus = "";
+    let coveredHere = false;
 
     // PAYOUT
     if (r.debit > 0) {
       debt += r.debit;
-      cls = "red";
     }
 
     // DEPOSIT
@@ -110,11 +103,18 @@ function analyze() {
       if (r.credit >= debt) {
         surplus = (r.credit - debt).toFixed(2);
         debt = 0;
-        cls = "yellow";
+        coveredHere = true;
       } else {
         debt -= r.credit;
-        cls = "red";
       }
+    }
+
+    // 🎯 COLOR FINAL (DESPUÉS del cálculo)
+    let cls = "green";
+    if (coveredHere) {
+      cls = "yellow";
+    } else if (debt > 0) {
+      cls = "red";
     }
 
     const tr = document.createElement("tr");
