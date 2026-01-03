@@ -1,22 +1,21 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
 <meta charset="UTF-8">
 <title>Cover Payouts Checker</title>
-
 <style>
-body { font-family: Arial, sans-serif; padding: 20px; }
-textarea { width: 100%; height: 180px; }
-button { margin: 10px 5px; padding: 8px 16px; }
-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-th, td { border: 1px solid #ccc; padding: 6px; text-align: right; }
-th { background: #000; color: #fff; }
-
-.green { background: #ccffcc; }
-.yellow { background: #fff3b0; }
-.red { background: #ffb3b3; }
-
-.status { font-weight: bold; margin-top: 15px; }
+body { font-family: Arial, sans-serif; padding:20px }
+textarea { width:100%; height:180px }
+button { margin:10px 5px; padding:6px 12px }
+table { border-collapse: collapse; width:100%; margin-top:15px }
+th, td { border:1px solid #ccc; padding:4px; font-size:12px; text-align:right }
+th { background:#000; color:#fff }
+.green { background:#c6f7c6 }
+.red { background:#f7c6c6 }
+.yellow { background:#fff3b0 }
+.status-good { color:green; font-weight:bold }
+.status-bad { color:red; font-weight:bold }
+td.left { text-align:left }
 </style>
 </head>
 
@@ -24,112 +23,125 @@ th { background: #000; color: #fff; }
 
 <h2>Cover Payouts Checker</h2>
 
-<p>Paste transaction rows below (NO headers):</p>
-<textarea id="input"></textarea><br>
+<textarea id="input" placeholder="Paste rows here (NO headers)"></textarea><br>
 
 <button onclick="analyze()">Analyze</button>
 <button onclick="clearAll()">Clear</button>
 
-<div id="status" class="status"></div>
-<div id="output"></div>
+<h3 id="status"></h3>
+
+<table id="resultTable" style="display:none">
+<thead>
+<tr>
+<th>Document Number</th>
+<th>TranDateTime</th>
+<th>TranType</th>
+<th>Description</th>
+<th>EnteredBy</th>
+<th>CreditedAmount</th>
+<th>DebitAmount</th>
+<th>TotalAmount</th>
+<th>Surplus After Cover</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
 
 <script>
-function analyze() {
+function parseLine(line) {
+  // Divide por espacios múltiples
+  const parts = line.trim().split(/\s+/);
 
-    const lines = document.getElementById("input").value.trim().split("\n");
-    let rows = [];
+  if (parts.length < 8) return null;
 
-    let activeDebt = 0;
-
-    for (let line of lines) {
-
-        const p = line.trim().split(/\s+/);
-        if (p.length < 9) continue;
-
-        const credit = parseFloat(p[6]) || 0;
-        const debit  = parseFloat(p[7]) || 0;
-        const total  = parseFloat(p[8]) || 0;
-
-        let surplus = "";
-        let rowClass = "green";
-
-        // 🔴 PAYOUT
-        if (debit > 0) {
-            activeDebt += debit;
-            rowClass = "red";
-        }
-
-        // 🟢 DEPOSIT
-        if (credit > 0 && activeDebt > 0) {
-            activeDebt -= credit;
-
-            if (activeDebt <= 0) {
-                surplus = Math.abs(activeDebt).toFixed(2);
-                activeDebt = 0;
-                rowClass = "yellow";
-            } else {
-                rowClass = "red";
-            }
-        }
-
-        rows.push({
-            doc: p[0],
-            date: p[1] + " " + p[2],
-            type: p[3],
-            desc: p[4],
-            entered: p[5],
-            credit: credit,
-            debit: debit,
-            total: total,
-            surplus: surplus,
-            cls: rowClass
-        });
-    }
-
-    render(rows, activeDebt);
+  return {
+    doc: parts[0],
+    date: parts[1] + " " + parts[2],
+    type: parts[3],
+    desc: parts[4],
+    entered: parts[5],
+    credit: parseFloat(parts[6]) || 0,
+    debit: parseFloat(parts[7]) || 0,
+    total: parseFloat(parts[8]) || 0
+  };
 }
 
-function render(rows, activeDebt) {
+function analyze() {
+  const text = document.getElementById("input").value.trim();
+  if (!text) return;
 
-    let html = `<table><tr>
-        <th>Document Number</th>
-        <th>TranDateTime</th>
-        <th>TranType</th>
-        <th>Description</th>
-        <th>EnteredBy</th>
-        <th>CreditedAmount</th>
-        <th>DebitAmount</th>
-        <th>TotalAmount</th>
-        <th>Surplus After Cover</th>
-    </tr>`;
+  const lines = text.split("\n");
+  const rows = [];
 
-    for (let r of rows) {
-        html += `<tr class="${r.cls}">
-            <td>${r.doc}</td>
-            <td>${r.date}</td>
-            <td>${r.type}</td>
-            <td>${r.desc}</td>
-            <td>${r.entered}</td>
-            <td>${r.credit.toFixed(2)}</td>
-            <td>${r.debit.toFixed(2)}</td>
-            <td>${r.total.toFixed(2)}</td>
-            <td>${r.surplus}</td>
-        </tr>`;
+  for (let l of lines) {
+    const r = parseLine(l);
+    if (r) rows.push(r);
+  }
+
+  // Ordenar de más viejo a más nuevo
+  rows.reverse();
+
+  let debt = 0;
+  const tbody = document.querySelector("#resultTable tbody");
+  tbody.innerHTML = "";
+
+  rows.forEach(r => {
+    let cls = "green";
+    let surplus = "";
+
+    // PAYOUT
+    if (r.debit > 0) {
+      debt += r.debit;
+      cls = "red";
     }
 
-    html += "</table>";
-    document.getElementById("output").innerHTML = html;
+    // DEPOSIT
+    if (r.credit > 0) {
+      if (debt > 0) {
+        if (r.credit >= debt) {
+          surplus = (r.credit - debt).toFixed(2);
+          debt = 0;
+          cls = "yellow";
+        } else {
+          debt -= r.credit;
+          cls = "red";
+        }
+      }
+    }
 
-    document.getElementById("status").innerHTML =
-        activeDebt > 0
-        ? `❌ Payouts NOT covered — Pending: $${activeDebt.toFixed(2)}`
-        : `✅ GOOD TO GO — All payouts covered`;
+    const tr = document.createElement("tr");
+    tr.className = cls;
+
+    tr.innerHTML = `
+      <td>${r.doc}</td>
+      <td>${r.date}</td>
+      <td>${r.type}</td>
+      <td class="left">${r.desc}</td>
+      <td>${r.entered}</td>
+      <td>${r.credit.toFixed(2)}</td>
+      <td>${r.debit.toFixed(2)}</td>
+      <td>${r.total.toFixed(2)}</td>
+      <td>${surplus}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById("resultTable").style.display = "table";
+
+  const status = document.getElementById("status");
+  if (debt === 0) {
+    status.textContent = "GOOD TO GO – All payouts covered";
+    status.className = "status-good";
+  } else {
+    status.textContent = "UNCOVERED PAYOUTS – Still owed: $" + debt.toFixed(2);
+    status.className = "status-bad";
+  }
 }
 
 function clearAll() {
-    document.getElementById("input").value = "";
-    document.getElementById("output").innerHTML = "";
-    document.getElementById("status").innerHTML = "";
+  document.getElementById("input").value = "";
+  document.getElementById("resultTable").style.display = "none";
+  document.getElementById("status").textContent = "";
 }
 </script>
 
