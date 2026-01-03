@@ -57,14 +57,19 @@ function parseLine(line) {
   const credit = parseFloat(parts.pop());
 
   const doc = parts.shift();
-  const date = parts.shift() + " " + parts.shift();
+  const dateStr = parts.shift() + " " + parts.shift();
   const type = parts.shift();
 
   const enteredBy = parts.pop();
   const description = parts.join(" ");
 
   return {
-    doc, date, type, description, enteredBy,
+    doc,
+    dateStr,
+    date: new Date(dateStr),
+    type,
+    description,
+    enteredBy,
     credit: credit || 0,
     debit: debit || 0,
     total: total || 0
@@ -83,7 +88,8 @@ function analyze() {
     if (r) rows.push(r);
   }
 
-  rows.reverse(); // cronológico
+  // ✅ ORDEN CORRECTO: viejo → nuevo
+  rows.sort((a, b) => a.date - b.date);
 
   let debt = 0;
   const tbody = document.querySelector("#resultTable tbody");
@@ -109,7 +115,7 @@ function analyze() {
       }
     }
 
-    // 🎯 COLOR FINAL (DESPUÉS del cálculo)
+    // 🎯 COLOR SEGÚN ESTADO FINAL
     let cls = "green";
     if (coveredHere) {
       cls = "yellow";
@@ -121,7 +127,7 @@ function analyze() {
     tr.className = cls;
     tr.innerHTML = `
       <td>${r.doc}</td>
-      <td>${r.date}</td>
+      <td>${r.dateStr}</td>
       <td>${r.type}</td>
       <td class="left">${r.description}</td>
       <td>${r.enteredBy}</td>
