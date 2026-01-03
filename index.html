@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Cover Payouts Checker</title>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: #f4f4f4;
+    padding: 20px;
+}
+
+textarea {
+    width: 100%;
+    height: 150px;
+    font-family: monospace;
+}
+
+button {
+    padding: 10px 15px;
+    margin: 6px 4px 6px 0;
+    cursor: pointer;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+    background: white;
+}
+
+th, td {
+    border: 1px solid #ccc;
+    padding: 6px;
+    text-align: right;
+}
+
+th {
+    background: #222;
+    color: white;
+}
+
+.green  { background: #c8f7c5; }
+.red    { background: #f7c5c5; }
+.yellow { background: #fff3b0; }
+
+.status {
+    font-size: 22px;
+    font-weight: bold;
+    margin-top: 15px;
+}
+
+.good { color: green; }
+.bad  { color: red; }
+</style>
+</head>
+
+<body>
+
+<h2>Cover Payouts Checker</h2>
+
+<p><b>Paste transaction rows below (NO headers):</b></p>
+<textarea id="input"></textarea>
+
+<br>
+<button onclick="analyze()">Analyze</button>
+<button onclick="clearAll()">Clear</button>
+
+<div id="status" class="status"></div>
+
+<table id="resultTable"></table>
+
+<script>
+function analyze() {
+    const input = document.getElementById("input").value.trim();
+    if (!input) return;
+
+    const rows = input.split("\n").map(r => r.split("\t"));
+
+    let payoutBalance = 0; // negative = owed
+    let maxOwed = 0;
+    let hasUncovered = false;
+
+    let table = `
+    <tr>
+        <th>Document Number</th>
+        <th>TranDateTime</th>
+        <th>TranType</th>
+        <th>Description</th>
+        <th>EnteredBy</th>
+        <th>CreditedAmount</th>
+        <th>DebitAmount</th>
+        <th>TotalAmount</th>
+        <th>Surplus After Cover</th>
+    </tr>`;
+
+    rows.forEach(r => {
+        let credit = parseFloat(r[5]) || 0;
+        let debit  = parseFloat(r[6]) || 0;
+
+        let rowClass = "";
+        let surplus = "";
+
+        // PAYOUT
+        if (debit > 0) {
+            payoutBalance -= debit;
+            rowClass = "red";
+            hasUncovered = true;
+            maxOwed = Math.min(maxOwed, payoutBalance);
+        }
+
+        // DEPOSIT
+        else if (credit > 0) {
+            let before = payoutBalance;
+            payoutBalance += credit;
+
+            // Still not covered
+            if (payoutBalance < 0) {
+                rowClass = "red";
+                hasUncovered = true;
+                maxOwed = Math.min(maxOwed, payoutBalance);
+            }
+            // This deposit finishes covering payouts
+            else if (before < 0 && payoutBalance >= 0) {
+                rowClass = "yellow";
+                surplus = payoutBalance.toFixed(2);
+            }
+            // No payouts owed
+            else {
+                rowClass = "green";
+            }
+        }
+
+        // No impact row
+        else {
+            rowClass = payoutBalance < 0 ? "red" : "green";
+        }
+
+        table += `<tr class="${rowClass}">`;
+        r.forEach(c => table += `<td>${c}</td>`);
+        table += `<td>${surplus}</td>`;
+        table += "</tr>";
+    });
+
+    document.getElementById("resultTable").innerHTML = table;
+
+    const status = document.getElementById("status");
+    if (payoutBalance < 0) {
+        status.textContent =
+            `UNCOVERED PAYOUTS – Needs redeposit: $${Math.abs(payoutBalance).toFixed(2)}`;
+        status.className = "status bad";
+    } else {
+        status.textContent = "GOOD TO GO – All payouts covered";
+        status.className = "status good";
+    }
+}
+
+function clearAll() {
+    document.getElementById("input").value = "";
+    document.getElementById("resultTable").innerHTML = "";
+    document.getElementById("status").textContent = "";
+}
+</script>
+
+</body>
+</html>
