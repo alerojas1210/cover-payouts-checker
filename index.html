@@ -52,9 +52,9 @@ function parseLine(line) {
   const parts = line.trim().split(/\s+/);
   if (parts.length < 8) return null;
 
-  const total = parseFloat(parts.pop());
-  const debit = parseFloat(parts.pop());
-  const credit = parseFloat(parts.pop());
+  const total = parseFloat(parts.pop()) || 0;
+  const debit = parseFloat(parts.pop()) || 0;
+  const credit = parseFloat(parts.pop()) || 0;
 
   const doc = parts.shift();
   const dateStr = parts.shift() + " " + parts.shift();
@@ -64,15 +64,8 @@ function parseLine(line) {
   const description = parts.join(" ");
 
   return {
-    doc,
-    dateStr,
-    date: new Date(dateStr),
-    type,
-    description,
-    enteredBy,
-    credit: credit || 0,
-    debit: debit || 0,
-    total: total || 0
+    doc, dateStr, type, description, enteredBy,
+    credit, debit, total
   };
 }
 
@@ -81,30 +74,24 @@ function analyze() {
   if (!text) return;
 
   const lines = text.split("\n");
-  const rows = [];
-
-  for (let l of lines) {
-    const r = parseLine(l);
-    if (r) rows.push(r);
-  }
-
-  // ✅ ORDEN CORRECTO: viejo → nuevo
-  rows.sort((a, b) => a.date - b.date);
-
-  let debt = 0;
   const tbody = document.querySelector("#resultTable tbody");
   tbody.innerHTML = "";
 
-  rows.forEach(r => {
+  let debt = 0;
+
+  lines.forEach(line => {
+    const r = parseLine(line);
+    if (!r) return;
+
     let surplus = "";
     let coveredHere = false;
 
-    // PAYOUT
-    if (r.debit > 0) {
-      debt += r.debit;
+    // 🔴 PAYOUT → SIEMPRE ACUMULA SI HAY DEUDA
+    if (r.debit < 0) {
+      debt += Math.abs(r.debit);
     }
 
-    // DEPOSIT
+    // 🟢 DEPOSIT → cubre deuda existente
     if (r.credit > 0 && debt > 0) {
       if (r.credit >= debt) {
         surplus = (r.credit - debt).toFixed(2);
@@ -115,7 +102,7 @@ function analyze() {
       }
     }
 
-    // 🎯 COLOR SEGÚN ESTADO FINAL
+    // 🎨 COLOR FINAL SEGÚN DEUDA REAL
     let cls = "green";
     if (coveredHere) {
       cls = "yellow";
