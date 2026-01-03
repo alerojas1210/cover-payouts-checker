@@ -5,39 +5,18 @@
 <title>Cover Payouts Checker</title>
 
 <style>
-body {
-    font-family: Arial, sans-serif;
-    padding: 20px;
-}
-textarea {
-    width: 100%;
-    height: 180px;
-}
-button {
-    margin: 10px 5px;
-    padding: 8px 16px;
-}
-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 15px;
-}
-th, td {
-    border: 1px solid #ccc;
-    padding: 6px;
-    text-align: right;
-}
-th {
-    background: #000;
-    color: #fff;
-}
+body { font-family: Arial, sans-serif; padding: 20px; }
+textarea { width: 100%; height: 180px; }
+button { margin: 10px 5px; padding: 8px 16px; }
+table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+th, td { border: 1px solid #ccc; padding: 6px; text-align: right; }
+th { background: #000; color: #fff; }
+
 .green { background: #ccffcc; }
 .yellow { background: #fff3b0; }
 .red { background: #ffb3b3; }
-.status {
-    font-weight: bold;
-    margin-top: 15px;
-}
+
+.status { font-weight: bold; margin-top: 15px; }
 </style>
 </head>
 
@@ -59,75 +38,73 @@ function analyze() {
 
     const lines = document.getElementById("input").value.trim().split("\n");
     let rows = [];
-    let payoutDebt = 0;
 
-    const headers = [
-        "Document Number",
-        "TranDateTime",
-        "TranType",
-        "Description",
-        "EnteredBy",
-        "CreditedAmount",
-        "DebitAmount",
-        "TotalAmount",
-        "Surplus After Cover"
-    ];
+    let activeDebt = 0;
 
     for (let line of lines) {
-        const parts = line.trim().split(/\s+/);
 
-        if (parts.length < 8) continue;
+        const p = line.trim().split(/\s+/);
+        if (p.length < 9) continue;
 
-        const row = {
-            doc: parts[0],
-            date: parts[1] + " " + parts[2],
-            type: parts[3],
-            desc: parts[4],
-            entered: parts[5],
-            credit: parseFloat(parts[6]) || 0,
-            debit: parseFloat(parts[7]) || 0,
-            total: parseFloat(parts[8]) || 0,
-            surplus: ""
-        };
+        const credit = parseFloat(p[6]) || 0;
+        const debit  = parseFloat(p[7]) || 0;
+        const total  = parseFloat(p[8]) || 0;
 
-        // 🔴 PAYOUT (Debit)
-        if (row.debit > 0) {
-            payoutDebt += row.debit;
+        let surplus = "";
+        let rowClass = "green";
+
+        // 🔴 PAYOUT
+        if (debit > 0) {
+            activeDebt += debit;
+            rowClass = "red";
         }
 
-        // 🟢 DEPOSIT (Credit)
-        if (row.credit > 0 && payoutDebt > 0) {
-            payoutDebt -= row.credit;
+        // 🟢 DEPOSIT
+        if (credit > 0 && activeDebt > 0) {
+            activeDebt -= credit;
 
-            if (payoutDebt <= 0) {
-                row.surplus = Math.abs(payoutDebt).toFixed(2);
-                payoutDebt = 0;
+            if (activeDebt <= 0) {
+                surplus = Math.abs(activeDebt).toFixed(2);
+                activeDebt = 0;
+                rowClass = "yellow";
+            } else {
+                rowClass = "red";
             }
         }
 
-        rows.push(row);
+        rows.push({
+            doc: p[0],
+            date: p[1] + " " + p[2],
+            type: p[3],
+            desc: p[4],
+            entered: p[5],
+            credit: credit,
+            debit: debit,
+            total: total,
+            surplus: surplus,
+            cls: rowClass
+        });
     }
 
-    renderTable(rows, payoutDebt);
+    render(rows, activeDebt);
 }
 
-function renderTable(rows, payoutDebt) {
+function render(rows, activeDebt) {
 
-    let html = "<table><tr>";
-    for (let h of [
-        "Document Number","TranDateTime","TranType","Description",
-        "EnteredBy","CreditedAmount","DebitAmount","TotalAmount","Surplus After Cover"
-    ]) {
-        html += `<th>${h}</th>`;
-    }
-    html += "</tr>";
+    let html = `<table><tr>
+        <th>Document Number</th>
+        <th>TranDateTime</th>
+        <th>TranType</th>
+        <th>Description</th>
+        <th>EnteredBy</th>
+        <th>CreditedAmount</th>
+        <th>DebitAmount</th>
+        <th>TotalAmount</th>
+        <th>Surplus After Cover</th>
+    </tr>`;
 
     for (let r of rows) {
-        let cls = "green";
-        if (r.debit > 0 && payoutDebt > 0) cls = "red";
-        if (r.surplus !== "") cls = "yellow";
-
-        html += `<tr class="${cls}">
+        html += `<tr class="${r.cls}">
             <td>${r.doc}</td>
             <td>${r.date}</td>
             <td>${r.type}</td>
@@ -144,8 +121,8 @@ function renderTable(rows, payoutDebt) {
     document.getElementById("output").innerHTML = html;
 
     document.getElementById("status").innerHTML =
-        payoutDebt > 0
-        ? `❌ Payouts NOT covered — Pending: $${payoutDebt.toFixed(2)}`
+        activeDebt > 0
+        ? `❌ Payouts NOT covered — Pending: $${activeDebt.toFixed(2)}`
         : `✅ GOOD TO GO — All payouts covered`;
 }
 
