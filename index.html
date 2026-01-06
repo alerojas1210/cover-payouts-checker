@@ -6,10 +6,9 @@
 
 <style>
 :root {
-  --bg: #f4f6f9;
+  --bg: #5f1467;
   --card: #ffffff;
-  --primary: #4f46e5;
-  --secondary: #6366f1;
+  --primary: #8b5cf6;
   --border: #e5e7eb;
   --text: #1f2937;
   --muted: #6b7280;
@@ -24,50 +23,59 @@
 }
 
 body {
-  font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: "Segoe UI", system-ui, sans-serif;
   background: var(--bg);
   margin: 0;
-  padding: 30px;
+  padding: 40px 20px;
   color: var(--text);
 }
 
+/* Logo */
+.logo {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+}
+
+.logo img {
+  height: 45px;
+}
+
+/* Main Card */
 .container {
   max-width: 1100px;
-  margin: auto;
+  margin: 60px auto 0;
   background: var(--card);
-  border-radius: 14px;
-  padding: 24px 28px 30px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+  border-radius: 16px;
+  padding: 26px 30px 34px;
+  box-shadow: 0 18px 40px rgba(0,0,0,0.25);
 }
 
 h2 {
-  margin-top: 0;
-  margin-bottom: 10px;
+  margin: 0 0 8px;
   font-size: 26px;
   font-weight: 600;
 }
 
 .subtitle {
   color: var(--muted);
-  margin-bottom: 16px;
+  margin-bottom: 18px;
 }
 
 textarea {
   width: 100%;
   height: 200px;
-  resize: vertical;
   padding: 14px;
-  border-radius: 10px;
+  border-radius: 12px;
   border: 1px solid var(--border);
   font-family: Consolas, monospace;
   font-size: 13px;
   outline: none;
-  transition: border 0.2s, box-shadow 0.2s;
 }
 
 textarea:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(79,70,229,0.15);
+  box-shadow: 0 0 0 3px rgba(139,92,246,0.2);
 }
 
 .actions {
@@ -77,31 +85,26 @@ textarea:focus {
 }
 
 button {
-  padding: 10px 18px;
+  padding: 10px 20px;
   border-radius: 10px;
   border: none;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  transition: transform 0.15s, box-shadow 0.15s;
 }
 
 button:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  box-shadow: 0 6px 14px rgba(0,0,0,0.15);
 }
 
-button:active {
-  transform: translateY(0);
-  box-shadow: none;
-}
-
-button.primary {
+.primary {
   background: var(--primary);
-  color: white;
+  color: #fff;
 }
 
-button.secondary {
+.secondary {
   background: #e5e7eb;
   color: var(--text);
 }
@@ -113,7 +116,7 @@ button.secondary {
 }
 
 .table-wrapper {
-  margin-top: 20px;
+  margin-top: 22px;
   overflow-x: auto;
 }
 
@@ -131,31 +134,27 @@ th, td {
 }
 
 th {
-  text-align: right;
-  font-weight: 600;
-  color: var(--muted);
   background: #f9fafb;
+  color: var(--muted);
+  font-weight: 600;
 }
 
 tr:hover td {
   background: #f9fafb;
 }
 
-.green {
-  background-color: var(--green);
-}
-
-.red {
-  background-color: var(--red);
-}
-
-.yellow {
-  background-color: var(--yellow);
-}
+.green { background-color: var(--green); }
+.red { background-color: var(--red); }
+.yellow { background-color: var(--yellow); }
 </style>
 </head>
 
 <body>
+
+<!-- Logo -->
+<div class="logo">
+  <img src="logo.png" alt="BetAnything Logo">
+</div>
 
 <div class="container">
 
@@ -209,7 +208,6 @@ function process() {
   let debt = 0;
   let processed = [];
 
-  // Process from bottom to top (oldest to newest)
   for (let i = rows.length - 1; i >= 0; i--) {
     let r = rows[i];
     let total = parseFloat(r[7]) || 0;
@@ -220,8 +218,7 @@ function process() {
     if (total < 0) {
       debt += Math.abs(total);
       color = "red";
-    }
-    else if (total > 0) {
+    } else if (total > 0) {
       if (debt > 0) {
         if (total < debt) {
           debt -= total;
@@ -258,12 +255,11 @@ function process() {
   document.getElementById("result").innerHTML = table;
 
   if (debt === 0) {
-    document.getElementById("status").innerHTML = "✅ Good to go";
-    document.getElementById("status").style.color = "green";
+    status.innerHTML = "✅ Good to go";
+    status.style.color = "green";
   } else {
-    document.getElementById("status").innerHTML =
-      `❌ Uncovered Payouts: $${debt.toFixed(2)}`;
-    document.getElementById("status").style.color = "red";
+    status.innerHTML = `❌ Uncovered Payouts: $${debt.toFixed(2)}`;
+    status.style.color = "red";
   }
 }
 </script>
