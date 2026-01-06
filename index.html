@@ -18,15 +18,13 @@
   --yellow: #fef3c7;
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 body {
-  font-family: "Segoe UI", system-ui, sans-serif;
-  background: var(--bg);
   margin: 0;
   padding: 40px 20px;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  background: var(--bg);
   color: var(--text);
 }
 
@@ -36,234 +34,19 @@ body {
   top: 20px;
   left: 20px;
 }
+.logo img { height: 44px; }
 
-.logo img {
-  height: 45px;
-}
-
-/* Main Card */
+/* Card */
 .container {
-  max-width: 1100px;
+  max-width: 1150px;
   margin: 60px auto 0;
   background: var(--card);
-  border-radius: 16px;
-  padding: 26px 30px 34px;
-  box-shadow: 0 18px 40px rgba(0,0,0,0.25);
+  border-radius: 18px;
+  padding: 28px 32px 34px;
+  box-shadow: 0 20px 45px rgba(0,0,0,.28);
 }
 
 h2 {
-  margin: 0 0 8px;
-  font-size: 26px;
-  font-weight: 600;
-}
-
-.subtitle {
-  color: var(--muted);
-  margin-bottom: 18px;
-}
-
-textarea {
-  width: 100%;
-  height: 200px;
-  padding: 14px;
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  font-family: Consolas, monospace;
-  font-size: 13px;
-  outline: none;
-}
-
-textarea:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(139,92,246,0.2);
-}
-
-.actions {
-  display: flex;
-  gap: 12px;
-  margin-top: 14px;
-}
-
-button {
-  padding: 10px 20px;
-  border-radius: 10px;
-  border: none;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: transform 0.15s, box-shadow 0.15s;
-}
-
-button:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 14px rgba(0,0,0,0.15);
-}
-
-.primary {
-  background: var(--primary);
-  color: #fff;
-}
-
-.secondary {
-  background: #e5e7eb;
-  color: var(--text);
-}
-
-#status {
-  margin-top: 18px;
-  font-size: 18px;
-  font-weight: 600;
-}
-
-.table-wrapper {
-  margin-top: 22px;
-  overflow-x: auto;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-
-th, td {
-  padding: 10px 8px;
-  border-bottom: 1px solid var(--border);
-  text-align: right;
-  white-space: nowrap;
-}
-
-th {
-  background: #f9fafb;
-  color: var(--muted);
-  font-weight: 600;
-}
-
-tr:hover td {
-  background: #f9fafb;
-}
-
-.green { background-color: var(--green); }
-.red { background-color: var(--red); }
-.yellow { background-color: var(--yellow); }
-</style>
-</head>
-
-<body>
-
-<!-- Logo -->
-<div class="logo">
-  <img src="logo.png" alt="BetAnything Logo">
-</div>
-
-<div class="container">
-
-  <h2>Cover Payouts Checker</h2>
-  <div class="subtitle">
-    Paste the transactions below (tab-separated from the system)
-  </div>
-
-  <textarea id="input" placeholder="Paste transactions here..."></textarea>
-
-  <div class="actions">
-    <button class="primary" onclick="process()">Process</button>
-    <button class="secondary" onclick="clearAll()">Clear</button>
-  </div>
-
-  <div id="status"></div>
-
-  <div class="table-wrapper">
-    <table id="result"></table>
-  </div>
-
-</div>
-
-<script>
-function clearAll() {
-  document.getElementById("input").value = "";
-  document.getElementById("result").innerHTML = "";
-  document.getElementById("status").innerHTML = "";
-}
-
-function process() {
-  const input = document.getElementById("input").value.trim();
-  if (!input) return;
-
-  const lines = input.split("\n");
-
-  const headers = [
-    "Document Number",
-    "TranDateTime",
-    "TranType",
-    "Description",
-    "EnteredBy",
-    "CreditedAmount",
-    "DebitAmount",
-    "TotalAmount",
-    "Surplus After Cover"
-  ];
-
-  let rows = lines.map(l => l.split("\t"));
-
-  let debt = 0;
-  let processed = [];
-
-  for (let i = rows.length - 1; i >= 0; i--) {
-    let r = rows[i];
-    let total = parseFloat(r[7]) || 0;
-
-    let color = "green";
-    let surplus = "";
-
-    if (total < 0) {
-      debt += Math.abs(total);
-      color = "red";
-    } else if (total > 0) {
-      if (debt > 0) {
-        if (total < debt) {
-          debt -= total;
-          color = "red";
-        } else {
-          surplus = (total - debt).toFixed(2);
-          debt = 0;
-          color = "yellow";
-        }
-      } else {
-        color = "green";
-      }
-    }
-
-    processed.push({ data: r, color, surplus });
-  }
-
-  processed.reverse();
-
-  let table = "<tr>";
-  headers.forEach(h => table += `<th>${h}</th>`);
-  table += "</tr>";
-
-  processed.forEach(p => {
-    table += "<tr>";
-    p.data.forEach((cell, idx) => {
-      let cls = (idx === 7) ? p.color : "";
-      table += `<td class="${cls}">${cell}</td>`;
-    });
-    table += `<td class="${p.color}">${p.surplus}</td>`;
-    table += "</tr>";
-  });
-
-  document.getElementById("result").innerHTML = table;
-
-  if (debt === 0) {
-    status.innerHTML = "✅ Good to go";
-    status.style.color = "green";
-  } else {
-    status.innerHTML = `❌ Uncovered Payouts: $${debt.toFixed(2)}`;
-    status.style.color = "red";
-  }
-}
-</script>
-
-</body>
-</html>
+  margin: 0 0 6px;
+  font-size:
 
